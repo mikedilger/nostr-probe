@@ -4,7 +4,7 @@ use futures_util::stream::FusedStream;
 use futures_util::{SinkExt, StreamExt};
 use http::Uri;
 use lazy_static::lazy_static;
-use nostr_types::{ClientMessage, Event, Id, RelayMessage, SubscriptionId};
+use nostr_types::{ClientMessage, Event, Filter, Id, RelayMessage, SubscriptionId};
 use tungstenite::Message;
 
 pub struct Prefixes {
@@ -19,6 +19,7 @@ lazy_static! {
 
 pub enum Command {
     PostEvent(Event),
+    FetchEvents(SubscriptionId, Vec<Filter>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,6 +81,11 @@ impl Probe {
                     match local_message {
                         Some(Command::PostEvent(event)) => {
                             let client_message = ClientMessage::Event(Box::new(event));
+                            let wire = serde_json::to_string(&client_message)?;
+                            websocket.send(Message::Text(wire)).await?;
+                        },
+                        Some(Command::FetchEvents(subid, filters)) => {
+                            let client_message = ClientMessage::Req(subid, filters);
                             let wire = serde_json::to_string(&client_message)?;
                             websocket.send(Message::Text(wire)).await?;
                         },
