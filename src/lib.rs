@@ -171,7 +171,7 @@ impl Probe {
     }
 }
 
-fn url_to_host_and_uri(url: &str) -> (String, Uri) {
+pub fn url_to_host_and_uri(url: &str) -> (String, Uri) {
     let uri: http::Uri = url.parse::<http::Uri>().expect("Could not parse url");
     let authority = uri.authority().expect("Has no hostname").as_str();
     let host = authority
