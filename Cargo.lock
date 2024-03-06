@@ -748,6 +748,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tungstenite",
+ "zeroize",
 ]
 
 [[package]]

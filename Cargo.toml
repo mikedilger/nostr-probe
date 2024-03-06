@@ -24,3 +24,4 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.21", features = [ "connect", "handshake", "rustls-tls-webpki-roots" ] }
 tungstenite = { version = "0.21", features = [ "rustls-tls-webpki-roots" ] }
+zeroize = "1.5"
