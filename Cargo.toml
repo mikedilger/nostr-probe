@@ -8,3 +8,4 @@ keywords = [ "nostr" ]
 license = "MIT"
 
 [dependencies]
+nostr-types = { git = "https://github.com/mikedilger/nostr-types" }
