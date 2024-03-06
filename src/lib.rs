@@ -7,13 +7,17 @@ use lazy_static::lazy_static;
 use nostr_types::{ClientMessage, Event, Filter, Id, RelayMessage, SubscriptionId};
 use tungstenite::Message;
 
+type Ws = tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+
 pub struct Prefixes {
     from_relay: String,
+    sending: String,
 }
 
 lazy_static! {
     pub static ref PREFIXES: Prefixes = Prefixes {
-        from_relay: "Relay".color(Color::Blue).to_string()
+        from_relay: "Relay".color(Color::Blue).to_string(),
+        sending: "Sending".color(Color::MediumPurple).to_string(),
     };
 }
 
@@ -75,19 +79,22 @@ impl Probe {
         loop {
             tokio::select! {
                 _ = ping_timer.tick() => {
-                    websocket.send(Message::Ping(vec![0x1])).await?;
+                    let msg = Message::Ping(vec![0x1]);
+                    self.send(&mut websocket, msg).await?;
                 },
                 local_message = self.rx.recv() => {
                     match local_message {
                         Some(Command::PostEvent(event)) => {
                             let client_message = ClientMessage::Event(Box::new(event));
                             let wire = serde_json::to_string(&client_message)?;
-                            websocket.send(Message::Text(wire)).await?;
+                            let msg = Message::Text(wire);
+                            self.send(&mut websocket, msg).await?;
                         },
                         Some(Command::FetchEvents(subid, filters)) => {
                             let client_message = ClientMessage::Req(subid, filters);
                             let wire = serde_json::to_string(&client_message)?;
-                            websocket.send(Message::Text(wire)).await?;
+                            let msg = Message::Text(wire);
+                            self.send(&mut websocket, msg).await?;
                         },
                         None => { }
                     }
@@ -174,9 +181,24 @@ impl Probe {
         }
 
         // Send close message before disconnecting
-        websocket.send(Message::Close(None)).await?;
+        let msg = Message::Close(None);
+        self.send(&mut websocket, msg).await?;
 
         Ok(())
+    }
+
+    async fn send(&mut self, websocket: &mut Ws, message: Message)
+                  -> Result<(), Box<dyn std::error::Error>>
+    {
+        match message {
+            Message::Text(ref s) => println!("{}: Text({})", PREFIXES.sending, s),
+            Message::Binary(_) => println!("{}: Binary(_)", PREFIXES.sending),
+            Message::Ping(_) => println!("{}: Ping(_)", PREFIXES.sending),
+            Message::Pong(_) => println!("{}: Pong(_)", PREFIXES.sending),
+            Message::Close(_) => println!("{}: Close(_)", PREFIXES.sending),
+            Message::Frame(_) => println!("{}: Frame(_)", PREFIXES.sending),
+        }
+        Ok(websocket.send(message).await?)
     }
 }
 
