@@ -173,6 +173,9 @@ impl Probe {
             }
         }
 
+        // Send close message before disconnecting
+        websocket.send(Message::Close(None)).await?;
+
         Ok(())
     }
 }
