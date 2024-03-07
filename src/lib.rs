@@ -72,6 +72,8 @@ impl Probe {
         )
         .await??;
 
+        let mut events: Vec<Event> = vec![];
+
         let mut ping_timer = tokio::time::interval(std::time::Duration::new(15, 0));
         ping_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         ping_timer.tick().await; // use up the first immediate tick.
@@ -115,45 +117,46 @@ impl Probe {
                             let relay_message: RelayMessage = serde_json::from_str(&s)?;
                             match relay_message {
                                 RelayMessage::Auth(challenge) => {
-                                    println!("{}: AUTH({})", PREFIXES.from_relay, challenge);
+                                    eprintln!("{}: AUTH({})", PREFIXES.from_relay, challenge);
                                     if self.exit_on.contains(&ExitMessage::Auth) {
-                                        println!("Exiting on Auth");
+                                        eprintln!("Exiting on Auth");
                                         break;
                                     }
                                 }
                                 RelayMessage::Event(sub, e) => {
                                     let event_json = serde_json::to_string(&e)?;
-                                    println!("{}: EVENT({}, {})", PREFIXES.from_relay, sub.as_str(), event_json);
+                                    eprintln!("{}: EVENT({}, {})", PREFIXES.from_relay, sub.as_str(), event_json);
+                                    events.push(*e);
                                     if self.exit_on.contains(&ExitMessage::Event(sub)) {
-                                        println!("Exiting on matching Event(sub)");
+                                        eprintln!("Exiting on matching Event(sub)");
                                         break;
                                     }
                                 }
                                 RelayMessage::Closed(sub, msg) => {
-                                    println!("{}: CLOSED({}, {})", PREFIXES.from_relay, sub.as_str(), msg);
+                                    eprintln!("{}: CLOSED({}, {})", PREFIXES.from_relay, sub.as_str(), msg);
                                     if self.exit_on.contains(&ExitMessage::Closed(sub)) {
-                                        println!("Exiting on matching Closed(sub)");
+                                        eprintln!("Exiting on matching Closed(sub)");
                                         break;
                                     }
                                 }
                                 RelayMessage::Notice(s) => {
-                                    println!("{}: NOTICE({})", PREFIXES.from_relay, s);
+                                    eprintln!("{}: NOTICE({})", PREFIXES.from_relay, s);
                                     if self.exit_on.contains(&ExitMessage::Notice) {
-                                        println!("Exiting on Notice");
+                                        eprintln!("Exiting on Notice");
                                         break;
                                     }
                                 }
                                 RelayMessage::Eose(sub) => {
-                                    println!("{}: EOSE({})", PREFIXES.from_relay, sub.as_str());
+                                    eprintln!("{}: EOSE({})", PREFIXES.from_relay, sub.as_str());
                                     if self.exit_on.contains(&ExitMessage::Eose(sub)) {
-                                        println!("Exiting on matching Eose(sub)");
+                                        eprintln!("Exiting on matching Eose(sub)");
                                         break;
                                     }
                                 }
                                 RelayMessage::Ok(id, ok, reason) => {
-                                    println!("{}: OK({}, {}, {})", PREFIXES.from_relay, id.as_hex_string(), ok, reason);
+                                    eprintln!("{}: OK({}, {}, {})", PREFIXES.from_relay, id.as_hex_string(), ok, reason);
                                     if self.exit_on.contains(&ExitMessage::Ok(id, ok)) {
-                                        println!("Exiting on matching Ok(id, ok)");
+                                        eprintln!("Exiting on matching Ok(id, ok)");
                                         break;
                                     }
                                 }
@@ -184,6 +187,13 @@ impl Probe {
         let msg = Message::Close(None);
         self.send(&mut websocket, msg).await?;
 
+        eprintln!();
+
+        // Print all events on stdout
+        for event in &events {
+            println!("{}", serde_json::to_string(&event)?);
+        }
+
         Ok(())
     }
 
@@ -191,12 +201,12 @@ impl Probe {
                   -> Result<(), Box<dyn std::error::Error>>
     {
         match message {
-            Message::Text(ref s) => println!("{}: Text({})", PREFIXES.sending, s),
-            Message::Binary(_) => println!("{}: Binary(_)", PREFIXES.sending),
-            Message::Ping(_) => println!("{}: Ping(_)", PREFIXES.sending),
-            Message::Pong(_) => println!("{}: Pong(_)", PREFIXES.sending),
-            Message::Close(_) => println!("{}: Close(_)", PREFIXES.sending),
-            Message::Frame(_) => println!("{}: Frame(_)", PREFIXES.sending),
+            Message::Text(ref s) => eprintln!("{}: Text({})", PREFIXES.sending, s),
+            Message::Binary(_) => eprintln!("{}: Binary(_)", PREFIXES.sending),
+            Message::Ping(_) => eprintln!("{}: Ping(_)", PREFIXES.sending),
+            Message::Pong(_) => eprintln!("{}: Pong(_)", PREFIXES.sending),
+            Message::Close(_) => eprintln!("{}: Close(_)", PREFIXES.sending),
+            Message::Frame(_) => eprintln!("{}: Frame(_)", PREFIXES.sending),
         }
         Ok(websocket.send(message).await?)
     }
