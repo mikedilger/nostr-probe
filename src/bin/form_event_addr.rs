@@ -31,7 +31,7 @@ fn main() {
     };
 
     let mut relays: Vec<UncheckedUrl> = Vec::new();
-    while let Some(r) = args.next() {
+    for r in args {
         relays.push(UncheckedUrl(r));
     }
 

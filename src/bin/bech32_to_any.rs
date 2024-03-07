@@ -11,7 +11,7 @@ fn main() {
     };
     let bech32 = bech32.trim();
 
-    if let Some(nb32) = NostrBech32::try_from_string(&bech32) {
+    if let Some(nb32) = NostrBech32::try_from_string(bech32) {
         match nb32 {
             NostrBech32::EventAddr(ea) => {
                 println!("Event Address:");
