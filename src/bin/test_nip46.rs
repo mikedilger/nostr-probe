@@ -176,7 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Now let us test signing an event
     // Create a pre-event for the nip46 server to sign
     let pre_event = PreEvent {
-        pubkey: ephemeral_public_key,
+        pubkey: remote_pubkey,
         created_at: Unixtime::now().unwrap(),
         kind: EventKind::TextNote,
         content: "This is a test".to_owned(),
