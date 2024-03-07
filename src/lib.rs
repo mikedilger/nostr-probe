@@ -25,6 +25,7 @@ lazy_static! {
 pub enum Command {
     PostEvent(Event),
     FetchEvents(SubscriptionId, Vec<Filter>),
+    Exit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +99,9 @@ impl Probe {
                             let wire = serde_json::to_string(&client_message)?;
                             let msg = Message::Text(wire);
                             self.send(&mut websocket, msg).await?;
+                        },
+                        Some(Command::Exit) => {
+                            break;
                         },
                         None => { }
                     }
