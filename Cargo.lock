@@ -841,6 +841,7 @@ dependencies = [
  "bech32",
  "colorful",
  "futures-util",
+ "hex",
  "http 1.1.0",
  "k256",
  "lazy_static",
