@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tx.send(Command::PostEvent(event)).await?;
 
     // Ideally we would be triggered by a relay message, but Probe doesn't talk to us.
-    tokio::time::sleep(std::time::Duration::new(1, 0)).await;
+    tokio::time::sleep(std::time::Duration::new(5, 0)).await;
 
     let mut filter = Filter::new();
     filter.add_id(&id);
