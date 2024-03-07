@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(_) => match PublicKey::try_from_hex_string(&key, true) {
                 Ok(key) => key,
                 Err(_) => panic!("Could not parse public key"),
-            }
+            },
         },
         None => panic!("Usage: fetch_by_kind_and_author <RelayURL> <KindNumber> <PubKey>"),
     };
@@ -50,10 +50,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filter = Filter {
         kinds: vec![kind],
         authors: vec![key],
-        .. Default::default()
+        ..Default::default()
     };
 
-    tx.send(Command::FetchEvents(our_sub_id, vec![filter])).await?;
+    tx.send(Command::FetchEvents(our_sub_id, vec![filter]))
+        .await?;
 
     Ok(join_handle.await?)
 }

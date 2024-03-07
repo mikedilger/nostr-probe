@@ -40,7 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     filter.add_event_kind(EventKind::Metadata);
     filter.limit = Some(1);
 
-    tx.send(Command::FetchEvents(our_sub_id, vec![filter])).await?;
+    tx.send(Command::FetchEvents(our_sub_id, vec![filter]))
+        .await?;
 
     Ok(join_handle.await?)
 }

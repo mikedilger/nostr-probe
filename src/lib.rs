@@ -7,7 +7,8 @@ use lazy_static::lazy_static;
 use nostr_types::{ClientMessage, Event, Filter, Id, RelayMessage, SubscriptionId};
 use tungstenite::Message;
 
-type Ws = tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+type Ws =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 pub struct Prefixes {
     from_relay: String,
@@ -197,9 +198,11 @@ impl Probe {
         Ok(())
     }
 
-    async fn send(&mut self, websocket: &mut Ws, message: Message)
-                  -> Result<(), Box<dyn std::error::Error>>
-    {
+    async fn send(
+        &mut self,
+        websocket: &mut Ws,
+        message: Message,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match message {
             Message::Text(ref s) => eprintln!("{}: Text({})", PREFIXES.sending, s),
             Message::Binary(_) => eprintln!("{}: Binary(_)", PREFIXES.sending),
