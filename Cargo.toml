@@ -13,6 +13,7 @@ bech32 = "0.9"
 colorful = "0.2"
 futures-util = "0.3"
 http = "1.1"
+k256 = { version = "0.13", features = [ "schnorr", "ecdh" ] }
 lazy_static = "1.4"
 nostr-types = { git = "https://github.com/mikedilger/nostr-types" }
 rand = "0.8"
