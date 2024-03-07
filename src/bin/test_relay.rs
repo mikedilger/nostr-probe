@@ -1,6 +1,7 @@
-use nostr_probe::{Command, ExitMessage, Probe};
+use nostr_probe::{Command, Probe};
 use nostr_types::{
-    EventKind, Filter, IdHex, KeySigner, PreEvent, PrivateKey, Signer, SubscriptionId, Unixtime,
+    EventKind, Filter, IdHex, KeySigner, PreEvent, PrivateKey, RelayMessage, Signer,
+    SubscriptionId, Unixtime,
 };
 use std::env;
 
@@ -32,21 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event = signer.sign_event(pre_event).unwrap();
     event.verify(None).unwrap();
 
-    let our_sub_id = SubscriptionId("fetch_by_id".to_string());
-    let cloned_sub_id = our_sub_id.clone();
-
     // Connect to relay and handle commands
-    let (tx, rx) = tokio::sync::mpsc::channel::<Command>(100);
+    let (to_probe, from_main) = tokio::sync::mpsc::channel::<Command>(100);
+    let (to_main, mut from_probe) = tokio::sync::mpsc::channel::<RelayMessage>(100);
     let join_handle = tokio::spawn(async move {
-        let mut probe = Probe::new(
-            rx,
-            vec![
-                ExitMessage::Eose(cloned_sub_id.clone()),
-                ExitMessage::Closed(cloned_sub_id),
-                ExitMessage::Notice,
-            ],
-        );
-
+        let mut probe = Probe::new(from_main, to_main);
         if let Err(e) = probe.connect_and_listen(&relay_url).await {
             eprintln!("{}", e);
         }
@@ -54,15 +45,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let id: IdHex = event.id.into();
 
-    tx.send(Command::PostEvent(event)).await?;
+    to_probe.send(Command::PostEvent(event.clone())).await?;
 
-    // Ideally we would be triggered by a relay message, but Probe doesn't talk to us.
-    tokio::time::sleep(std::time::Duration::new(5, 0)).await;
+    loop {
+        match from_probe.recv().await.unwrap() {
+            RelayMessage::Ok(id, _, _) => {
+                if id == event.id {
+                    break;
+                }
+            }
+            RelayMessage::Notice(_) => {
+                to_probe.send(Command::Exit).await?;
+                return Ok(join_handle.await?);
+            }
+            _ => {}
+        }
+    }
 
+    let our_sub_id = SubscriptionId("fetch_by_id".to_string());
     let mut filter = Filter::new();
     filter.add_id(&id);
-    tx.send(Command::FetchEvents(our_sub_id, vec![filter]))
+    to_probe
+        .send(Command::FetchEvents(our_sub_id.clone(), vec![filter]))
         .await?;
+
+    loop {
+        match from_probe.recv().await.unwrap() {
+            RelayMessage::Eose(subid) => {
+                if subid == our_sub_id {
+                    to_probe.send(Command::Exit).await?;
+                    break;
+                }
+            }
+            RelayMessage::Closed(subid, _) => {
+                if subid == our_sub_id {
+                    to_probe.send(Command::Exit).await?;
+                    break;
+                }
+            }
+            RelayMessage::Event(subid, e) => {
+                if subid == our_sub_id && e.id == event.id {
+                    to_probe.send(Command::Exit).await?;
+                    break;
+                }
+            }
+            RelayMessage::Notice(_) => {
+                to_probe.send(Command::Exit).await?;
+                break;
+            }
+            _ => {}
+        }
+    }
 
     Ok(join_handle.await?)
 }

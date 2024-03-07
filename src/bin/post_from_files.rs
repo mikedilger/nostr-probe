@@ -1,5 +1,5 @@
-use nostr_probe::{Command, ExitMessage, Probe};
-use nostr_types::Event;
+use nostr_probe::{Command, Probe};
+use nostr_types::{Event, RelayMessage};
 use std::env;
 use std::fs;
 use std::io::Read;
@@ -31,24 +31,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         events.push(event);
     }
 
-    let (tx, rx) = tokio::sync::mpsc::channel::<Command>(100);
-
+    let (to_probe, from_main) = tokio::sync::mpsc::channel::<Command>(100);
+    let (to_main, mut from_probe) = tokio::sync::mpsc::channel::<RelayMessage>(100);
     let join_handle = tokio::spawn(async move {
-        let mut probe = Probe::new(rx, vec![ExitMessage::Notice]);
-
+        let mut probe = Probe::new(from_main, to_main);
         if let Err(e) = probe.connect_and_listen(&relay_url).await {
             eprintln!("{}", e);
         }
     });
 
-    for event in &events {
-        tx.send(Command::PostEvent(event.clone())).await?;
+    'events: for event in &events {
+        to_probe.send(Command::PostEvent(event.clone())).await?;
 
-        // Ideally wait for the response, but our Probe doesn't talk to us.
-        tokio::time::sleep(std::time::Duration::new(0, 250)).await;
+        // Wait for OK
+        loop {
+            match from_probe.recv().await.unwrap() {
+                RelayMessage::Ok(id, _, _) => {
+                    if id == event.id {
+                        break;
+                    }
+                }
+                RelayMessage::Notice(_) => {
+                    to_probe.send(Command::Exit).await?;
+                    break 'events;
+                }
+                _ => {}
+            }
+        }
     }
 
-    tx.send(Command::Exit).await?;
+    to_probe.send(Command::Exit).await?;
 
     Ok(join_handle.await?)
 }

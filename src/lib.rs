@@ -4,7 +4,7 @@ use futures_util::stream::FusedStream;
 use futures_util::{SinkExt, StreamExt};
 use http::Uri;
 use lazy_static::lazy_static;
-use nostr_types::{ClientMessage, Event, Filter, Id, RelayMessage, SubscriptionId};
+use nostr_types::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId};
 use tungstenite::Message;
 
 type Ws =
@@ -28,24 +28,17 @@ pub enum Command {
     Exit,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ExitMessage {
-    Auth,
-    Closed(SubscriptionId),
-    Eose(SubscriptionId),
-    Event(SubscriptionId),
-    Notice,
-    Ok(Id, bool),
-}
-
 pub struct Probe {
-    pub rx: tokio::sync::mpsc::Receiver<Command>,
-    pub exit_on: Vec<ExitMessage>,
+    pub from_main: tokio::sync::mpsc::Receiver<Command>,
+    pub to_main: tokio::sync::mpsc::Sender<RelayMessage>,
 }
 
 impl Probe {
-    pub fn new(rx: tokio::sync::mpsc::Receiver<Command>, exit_on: Vec<ExitMessage>) -> Probe {
-        Probe { rx, exit_on }
+    pub fn new(
+        from_main: tokio::sync::mpsc::Receiver<Command>,
+        to_main: tokio::sync::mpsc::Sender<RelayMessage>,
+    ) -> Probe {
+        Probe { from_main, to_main }
     }
 
     pub async fn connect_and_listen(
@@ -74,8 +67,6 @@ impl Probe {
         )
         .await??;
 
-        let mut events: Vec<Event> = vec![];
-
         let mut ping_timer = tokio::time::interval(std::time::Duration::new(15, 0));
         ping_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         ping_timer.tick().await; // use up the first immediate tick.
@@ -86,7 +77,7 @@ impl Probe {
                     let msg = Message::Ping(vec![0x1]);
                     self.send(&mut websocket, msg).await?;
                 },
-                local_message = self.rx.recv() => {
+                local_message = self.from_main.recv() => {
                     match local_message {
                         Some(Command::PostEvent(event)) => {
                             let client_message = ClientMessage::Event(Box::new(event));
@@ -117,72 +108,21 @@ impl Probe {
                         }
                     }?;
 
+                    // Display it
+                    Self::display(message.clone())?;
+
+                    // Take action
                     match message {
                         Message::Text(s) => {
+                            // Send back to main
                             let relay_message: RelayMessage = serde_json::from_str(&s)?;
-                            match relay_message {
-                                RelayMessage::Auth(challenge) => {
-                                    eprintln!("{}: AUTH({})", PREFIXES.from_relay, challenge);
-                                    if self.exit_on.contains(&ExitMessage::Auth) {
-                                        eprintln!("Exiting on Auth");
-                                        break;
-                                    }
-                                }
-                                RelayMessage::Event(sub, e) => {
-                                    let event_json = serde_json::to_string(&e)?;
-                                    eprintln!("{}: EVENT({}, {})", PREFIXES.from_relay, sub.as_str(), event_json);
-                                    events.push(*e);
-                                    if self.exit_on.contains(&ExitMessage::Event(sub)) {
-                                        eprintln!("Exiting on matching Event(sub)");
-                                        break;
-                                    }
-                                }
-                                RelayMessage::Closed(sub, msg) => {
-                                    eprintln!("{}: CLOSED({}, {})", PREFIXES.from_relay, sub.as_str(), msg);
-                                    if self.exit_on.contains(&ExitMessage::Closed(sub)) {
-                                        eprintln!("Exiting on matching Closed(sub)");
-                                        break;
-                                    }
-                                }
-                                RelayMessage::Notice(s) => {
-                                    eprintln!("{}: NOTICE({})", PREFIXES.from_relay, s);
-                                    if self.exit_on.contains(&ExitMessage::Notice) {
-                                        eprintln!("Exiting on Notice");
-                                        break;
-                                    }
-                                }
-                                RelayMessage::Eose(sub) => {
-                                    eprintln!("{}: EOSE({})", PREFIXES.from_relay, sub.as_str());
-                                    if self.exit_on.contains(&ExitMessage::Eose(sub)) {
-                                        eprintln!("Exiting on matching Eose(sub)");
-                                        break;
-                                    }
-                                }
-                                RelayMessage::Ok(id, ok, reason) => {
-                                    eprintln!("{}: OK({}, {}, {})", PREFIXES.from_relay, id.as_hex_string(), ok, reason);
-                                    if self.exit_on.contains(&ExitMessage::Ok(id, ok)) {
-                                        eprintln!("Exiting on matching Ok(id, ok)");
-                                        break;
-                                    }
-                                }
-                            }
+                            self.to_main.send(relay_message).await?;
                         },
-                        Message::Binary(_) => {
-                            eprintln!("{}: Binary message received!!!", PREFIXES.from_relay);
-                        },
-                        Message::Ping(_) => {
-                            eprintln!("{}: Ping", PREFIXES.from_relay);
-                        },
-                        Message::Pong(_) => {
-                            eprintln!("{}: Pong", PREFIXES.from_relay);
-                        },
-                        Message::Close(_) => {
-                            eprintln!("{}", "Remote closed nicely.".color(Color::Green));
-                            break;
-                        }
-                        Message::Frame(_) => {
-                            unreachable!()
-                        }
+                        Message::Binary(_) => { },
+                        Message::Ping(_) => { },
+                        Message::Pong(_) => { },
+                        Message::Close(_) => break,
+                        Message::Frame(_) => unreachable!(),
                     }
                 },
             }
@@ -192,11 +132,61 @@ impl Probe {
         let msg = Message::Close(None);
         self.send(&mut websocket, msg).await?;
 
-        eprintln!();
+        Ok(())
+    }
 
-        // Print all events on stdout
-        for event in &events {
-            println!("{}", serde_json::to_string(&event)?);
+    fn display(message: Message) -> Result<(), Box<dyn std::error::Error>> {
+        match message {
+            Message::Text(s) => {
+                let relay_message: RelayMessage = serde_json::from_str(&s)?;
+                match relay_message {
+                    RelayMessage::Auth(challenge) => {
+                        eprintln!("{}: AUTH({})", PREFIXES.from_relay, challenge);
+                    }
+                    RelayMessage::Event(sub, e) => {
+                        let event_json = serde_json::to_string(&e)?;
+                        eprintln!(
+                            "{}: EVENT({}, {})",
+                            PREFIXES.from_relay,
+                            sub.as_str(),
+                            event_json
+                        );
+                    }
+                    RelayMessage::Closed(sub, msg) => {
+                        eprintln!("{}: CLOSED({}, {})", PREFIXES.from_relay, sub.as_str(), msg);
+                    }
+                    RelayMessage::Notice(s) => {
+                        eprintln!("{}: NOTICE({})", PREFIXES.from_relay, s);
+                    }
+                    RelayMessage::Eose(sub) => {
+                        eprintln!("{}: EOSE({})", PREFIXES.from_relay, sub.as_str());
+                    }
+                    RelayMessage::Ok(id, ok, reason) => {
+                        eprintln!(
+                            "{}: OK({}, {}, {})",
+                            PREFIXES.from_relay,
+                            id.as_hex_string(),
+                            ok,
+                            reason
+                        );
+                    }
+                }
+            }
+            Message::Binary(_) => {
+                eprintln!("{}: Binary message received!!!", PREFIXES.from_relay);
+            }
+            Message::Ping(_) => {
+                eprintln!("{}: Ping", PREFIXES.from_relay);
+            }
+            Message::Pong(_) => {
+                eprintln!("{}: Pong", PREFIXES.from_relay);
+            }
+            Message::Close(_) => {
+                eprintln!("{}", "Remote closed nicely.".color(Color::Green));
+            }
+            Message::Frame(_) => {
+                unreachable!()
+            }
         }
 
         Ok(())
