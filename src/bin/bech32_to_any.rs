@@ -71,7 +71,7 @@ fn main() {
         println!("Private Key: {}", key.as_hex_string());
     } else {
         let (hrp, data) = bech32::decode(bech32).unwrap();
-        println!("DATA.0 = {}", hrp);
-        println!("DATA.1 = {}", String::from_utf8_lossy(&data));
+        println!("HRP = {}", hrp);
+        println!("DATA = \"{:?}\"", String::from_utf8_lossy(&data));
     }
 }
