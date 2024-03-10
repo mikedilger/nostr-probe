@@ -1,4 +1,3 @@
-use bech32::FromBase32;
 use nostr_types::{NostrBech32, PrivateKey};
 use std::env;
 
@@ -71,9 +70,8 @@ fn main() {
     } else if let Ok(mut key) = PrivateKey::try_from_bech32_string(bech32) {
         println!("Private Key: {}", key.as_hex_string());
     } else {
-        let data = bech32::decode(bech32).unwrap();
-        println!("DATA.0 = {}", data.0);
-        let decoded = Vec::<u8>::from_base32(&data.1).unwrap();
-        println!("DATA.1 = {}", String::from_utf8_lossy(&decoded));
+        let (hrp, data) = bech32::decode(bech32).unwrap();
+        println!("DATA.0 = {}", hrp);
+        println!("DATA.1 = {}", String::from_utf8_lossy(&data));
     }
 }

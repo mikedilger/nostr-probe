@@ -93,12 +93,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
+name = "bech32"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
+
+[[package]]
 name = "bitcoin"
 version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0694ea59225b0c5f3cb405ff3f670e4828358ed26aec49dc352f730f0cb1a8a3"
 dependencies = [
- "bech32",
+ "bech32 0.9.1",
  "bitcoin_hashes 0.11.0",
  "secp256k1 0.24.3",
 ]
@@ -752,7 +758,7 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4e44b0e2822c8811470137d2339fdfe67a699b3248bb1606d1d02eb6a1e9f0a"
 dependencies = [
- "bech32",
+ "bech32 0.9.1",
  "bitcoin",
  "bitcoin_hashes 0.11.0",
  "lightning",
@@ -838,7 +844,7 @@ name = "nostr-probe"
 version = "0.2.0"
 dependencies = [
  "base64",
- "bech32",
+ "bech32 0.11.0",
  "colorful",
  "futures-util",
  "hex",
@@ -865,7 +871,7 @@ source = "git+https://github.com/mikedilger/nostr-types#7825e4272ef87609897716c6
 dependencies = [
  "aes",
  "base64",
- "bech32",
+ "bech32 0.9.1",
  "cbc",
  "chacha20",
  "chacha20poly1305",
