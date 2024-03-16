@@ -24,6 +24,7 @@ lazy_static! {
 
 pub enum Command {
     PostEvent(Event),
+    Auth(Event),
     FetchEvents(SubscriptionId, Vec<Filter>),
     Exit,
 }
@@ -81,6 +82,12 @@ impl Probe {
                     match local_message {
                         Some(Command::PostEvent(event)) => {
                             let client_message = ClientMessage::Event(Box::new(event));
+                            let wire = serde_json::to_string(&client_message)?;
+                            let msg = Message::Text(wire);
+                            self.send(&mut websocket, msg).await?;
+                        },
+                        Some(Command::Auth(event)) => {
+                            let client_message = ClientMessage::Auth(Box::new(event));
                             let wire = serde_json::to_string(&client_message)?;
                             let msg = Message::Text(wire);
                             self.send(&mut websocket, msg).await?;
