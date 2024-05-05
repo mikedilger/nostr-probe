@@ -5,9 +5,10 @@ use futures_util::{SinkExt, StreamExt};
 use http::Uri;
 use lazy_static::lazy_static;
 use nostr_types::{
-    ClientMessage, EncryptedPrivateKey, Event, Filter, KeySigner, RelayMessage, Signer,
-    SubscriptionId,
+    ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, KeySigner, PreEvent,
+    RelayMessage, Signer, SubscriptionId, Tag, Unixtime, Why,
 };
+use tokio::sync::mpsc::{Receiver, Sender};
 use tungstenite::Message;
 use zeroize::Zeroize;
 
@@ -259,4 +260,85 @@ pub fn load_signer() -> Result<KeySigner, Box<dyn std::error::Error>> {
     signer.unlock(&password)?;
     password.zeroize();
     Ok(signer)
+}
+
+pub async fn req(
+    relay_url: &str,
+    signer: KeySigner,
+    filter: Filter,
+    to_probe: Sender<Command>,
+    mut from_probe: Receiver<RelayMessage>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pubkey = signer.public_key();
+    let mut authenticated: bool = false;
+
+    let our_sub_id = SubscriptionId("fetch_by_kind_and_author".to_string());
+    to_probe
+        .send(Command::FetchEvents(
+            our_sub_id.clone(),
+            vec![filter.clone()],
+        ))
+        .await?;
+
+    loop {
+        let relay_message = from_probe.recv().await.unwrap();
+        let why = relay_message.why();
+        match relay_message {
+            RelayMessage::Auth(challenge) => {
+                let pre_event = PreEvent {
+                    pubkey,
+                    created_at: Unixtime::now().unwrap(),
+                    kind: EventKind::Auth,
+                    tags: vec![
+                        Tag::new(&["relay", &relay_url]),
+                        Tag::new(&["challenge", &challenge]),
+                    ],
+                    content: "".to_string(),
+                };
+                let event = signer.sign_event(pre_event)?;
+                to_probe.send(Command::Auth(event)).await?;
+                authenticated = true;
+            }
+            RelayMessage::Eose(sub) => {
+                if sub == our_sub_id {
+                    to_probe.send(Command::Exit).await?;
+                    break;
+                }
+            }
+            RelayMessage::Event(sub, e) => {
+                if sub == our_sub_id {
+                    println!("{}", serde_json::to_string(&e)?);
+                }
+            }
+            RelayMessage::Closed(sub, _) => {
+                if sub == our_sub_id {
+                    if why == Some(Why::AuthRequired) {
+                        if !authenticated {
+                            eprintln!("Relay CLOSED our sub due to auth-required, but it has not AUTHed us! (Relay is buggy)");
+                            break;
+                        }
+
+                        // We have already authenticated, but our submission got to the relay first,
+                        // so we now have to resubmit our smission
+                        to_probe
+                            .send(Command::FetchEvents(
+                                our_sub_id.clone(),
+                                vec![filter.clone()],
+                            ))
+                            .await?;
+                    } else {
+                        to_probe.send(Command::Exit).await?;
+                        break;
+                    }
+                }
+            }
+            RelayMessage::Notice(_) => {
+                to_probe.send(Command::Exit).await?;
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
 }
