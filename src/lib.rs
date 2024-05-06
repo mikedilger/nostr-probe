@@ -280,11 +280,7 @@ pub async fn req(
         ))
         .await?;
 
-    let mut safety = 5;
     loop {
-        safety -= 1;
-        if safety == 0 { break; }
-
         let relay_message = from_probe.recv().await.unwrap();
         let why = relay_message.why();
         match relay_message {
