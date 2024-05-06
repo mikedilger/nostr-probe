@@ -5,7 +5,7 @@ use futures_util::{SinkExt, StreamExt};
 use http::Uri;
 use lazy_static::lazy_static;
 use nostr_types::{
-    ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, KeySigner, PreEvent,
+    ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, Id, KeySigner, PreEvent,
     RelayMessage, Signer, SubscriptionId, Tag, Unixtime, Why,
 };
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -270,7 +270,7 @@ pub async fn req(
     mut from_probe: Receiver<RelayMessage>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pubkey = signer.public_key();
-    let mut authenticated: bool = false;
+    let mut authenticated: Option<Id> = None;
 
     let our_sub_id = SubscriptionId("fetch_by_kind_and_author".to_string());
     to_probe
@@ -280,7 +280,11 @@ pub async fn req(
         ))
         .await?;
 
+    let mut safety = 5;
     loop {
+        safety -= 1;
+        if safety == 0 { break; }
+
         let relay_message = from_probe.recv().await.unwrap();
         let why = relay_message.why();
         match relay_message {
@@ -296,8 +300,8 @@ pub async fn req(
                     content: "".to_string(),
                 };
                 let event = signer.sign_event(pre_event)?;
+                authenticated = Some(event.id);
                 to_probe.send(Command::Auth(event)).await?;
-                authenticated = true;
             }
             RelayMessage::Eose(sub) => {
                 if sub == our_sub_id {
@@ -313,7 +317,7 @@ pub async fn req(
             RelayMessage::Closed(sub, _) => {
                 if sub == our_sub_id {
                     if why == Some(Why::AuthRequired) {
-                        if !authenticated {
+                        if authenticated.is_none() {
                             eprintln!("Relay CLOSED our sub due to auth-required, but it has not AUTHed us! (Relay is buggy)");
                             break;
                         }
@@ -336,7 +340,17 @@ pub async fn req(
                 to_probe.send(Command::Exit).await?;
                 break;
             }
-            _ => {}
+            RelayMessage::Ok(id, is_ok, reason) => {
+                if let Some(authid) = authenticated {
+                    if authid == id {
+                        if !is_ok {
+                            eprintln!("AUTH failed: {}", reason);
+                            to_probe.send(Command::Exit).await?;
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
