@@ -315,17 +315,12 @@ pub async fn req(
                     if why == Some(Why::AuthRequired) {
                         if authenticated.is_none() {
                             eprintln!("Relay CLOSED our sub due to auth-required, but it has not AUTHed us! (Relay is buggy)");
+                            to_probe.send(Command::Exit).await?;
                             break;
                         }
 
-                        // We have already authenticated, but our submission got to the relay first,
-                        // so we now have to resubmit our smission
-                        to_probe
-                            .send(Command::FetchEvents(
-                                our_sub_id.clone(),
-                                vec![filter.clone()],
-                            ))
-                            .await?;
+                        // We have already authenticated. We will resubmit once we get the
+                        // OK message.
                     } else {
                         to_probe.send(Command::Exit).await?;
                         break;
@@ -339,7 +334,15 @@ pub async fn req(
             RelayMessage::Ok(id, is_ok, reason) => {
                 if let Some(authid) = authenticated {
                     if authid == id {
-                        if !is_ok {
+                        if is_ok {
+                            // Resubmit our request
+                            to_probe
+                                .send(Command::FetchEvents(
+                                    our_sub_id.clone(),
+                                    vec![filter.clone()],
+                                ))
+                                .await?;
+                        } else {
                             eprintln!("AUTH failed: {}", reason);
                             to_probe.send(Command::Exit).await?;
                             break;
