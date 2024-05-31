@@ -1,8 +1,8 @@
 use nostr_types::{Event, Id, Signer, Tag};
 use secp256k1::hashes::Hash;
+use serde_json::Value;
 use std::env;
 use std::io::Read;
-use serde_json::Value;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

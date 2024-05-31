@@ -290,7 +290,7 @@ pub async fn req(
                     created_at: Unixtime::now().unwrap(),
                     kind: EventKind::Auth,
                     tags: vec![
-                        Tag::new(&["relay", &relay_url]),
+                        Tag::new(&["relay", relay_url]),
                         Tag::new(&["challenge", &challenge]),
                     ],
                     content: "".to_string(),

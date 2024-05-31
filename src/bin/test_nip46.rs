@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             match bits[0] {
                 "relay" => {
-                    let url = RelayUrl::try_from_str(&bits[1])?;
+                    let url = RelayUrl::try_from_str(bits[1])?;
                     relays.push(url);
                 }
                 "secret" => {
