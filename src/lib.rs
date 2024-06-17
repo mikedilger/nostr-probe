@@ -272,7 +272,7 @@ pub async fn req(
     let pubkey = signer.public_key();
     let mut authenticated: Option<Id> = None;
 
-    let our_sub_id = SubscriptionId("fetch_by_kind_and_author".to_string());
+    let our_sub_id = SubscriptionId("subscription-id".to_string());
     to_probe
         .send(Command::FetchEvents(
             our_sub_id.clone(),
