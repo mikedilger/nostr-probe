@@ -287,7 +287,7 @@ pub async fn req(
             RelayMessage::Auth(challenge) => {
                 let pre_event = PreEvent {
                     pubkey,
-                    created_at: Unixtime::now().unwrap(),
+                    created_at: Unixtime::now(),
                     kind: EventKind::Auth,
                     tags: vec![
                         Tag::new(&["relay", relay_url]),

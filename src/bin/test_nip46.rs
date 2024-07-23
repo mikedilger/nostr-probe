@@ -126,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let pre_event = PreEvent {
             pubkey: ephemeral_public_key,
-            created_at: Unixtime::now().unwrap(),
+            created_at: Unixtime::now(),
             kind: EventKind::NostrConnect,
             content: encrypted_content,
             tags: vec![Tag::new(&["p", &remote_pubkey.as_hex_string()])],
@@ -177,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a pre-event for the nip46 server to sign
     let pre_event = PreEvent {
         pubkey: remote_pubkey,
-        created_at: Unixtime::now().unwrap(),
+        created_at: Unixtime::now(),
         kind: EventKind::TextNote,
         content: "This is a test".to_owned(),
         tags: vec![],
@@ -204,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let pre_event = PreEvent {
             pubkey: ephemeral_public_key,
-            created_at: Unixtime::now().unwrap(),
+            created_at: Unixtime::now(),
             kind: EventKind::NostrConnect,
             content: encrypted_content,
             tags: vec![Tag::new(&["p", &remote_pubkey.as_hex_string()])],

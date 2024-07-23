@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create an event for testing the relay
     let pre_event = PreEvent {
         pubkey: public_key,
-        created_at: Unixtime::now().unwrap(),
+        created_at: Unixtime::now(),
         kind: EventKind::TextNote,
         content: "Hello. This is a test to see if this relay accepts notes from new people. \
                   This is from an ephemeral keypair, and this note can be ignored or deleted."

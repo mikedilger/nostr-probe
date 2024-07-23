@@ -1,4 +1,4 @@
-use nostr_types::{EventPointer, Id, NostrBech32, UncheckedUrl};
+use nostr_types::{NEvent, Id, NostrBech32, UncheckedUrl};
 use std::env;
 
 fn main() {
@@ -17,14 +17,14 @@ fn main() {
         relays.push(url);
     }
 
-    let ep = EventPointer {
+    let ep = NEvent {
         id,
         relays,
         kind: None,
         author: None,
     };
 
-    let nurl = NostrBech32::EventPointer(ep);
+    let nurl = NostrBech32::NEvent(ep);
 
     println!("{}", nurl);
 }

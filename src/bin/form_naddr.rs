@@ -1,4 +1,4 @@
-use nostr_types::{EventAddr, EventKind, NostrUrl, PublicKey, UncheckedUrl};
+use nostr_types::{EventKind, NAddr, NostrUrl, PublicKey, UncheckedUrl};
 use std::env;
 
 fn main() {
@@ -35,14 +35,14 @@ fn main() {
         relays.push(UncheckedUrl(r));
     }
 
-    let ea = EventAddr {
+    let na = NAddr {
         d,
         author,
         kind,
         relays,
     };
 
-    let nurl: NostrUrl = ea.into();
+    let nurl: NostrUrl = na.into();
 
     println!("{}", nurl);
 }

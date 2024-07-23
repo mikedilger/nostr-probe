@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut pre_event: PreEvent = serde_json::from_str(&s)?;
 
     // Update creation stamp
-    pre_event.created_at = Unixtime::now().unwrap();
+    pre_event.created_at = Unixtime::now();
 
     let signer = nostr_probe::load_signer()?;
 
