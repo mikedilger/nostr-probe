@@ -1,4 +1,4 @@
-use nostr_types::{NEvent, Id, NostrBech32, UncheckedUrl};
+use nostr_types::{Id, NEvent, NostrBech32, UncheckedUrl};
 use std::env;
 
 fn main() {

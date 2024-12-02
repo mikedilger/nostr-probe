@@ -1,5 +1,5 @@
 use nostr_probe::{Command, Probe};
-use nostr_types::{EventKind, Filter, PublicKeyHex, RelayMessage, SubscriptionId};
+use nostr_types::{EventKind, Filter, PublicKey, RelayMessage, SubscriptionId};
 use std::env;
 
 #[tokio::main]
@@ -10,8 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(u) => u,
         None => panic!("Usage: fetch_metadata <RelayURL> <PubKeyHex>"),
     };
-    let pubkeyhex: PublicKeyHex = match args.next() {
-        Some(id) => PublicKeyHex::try_from_str(&id)?,
+    let pubkey: PublicKey = match args.next() {
+        Some(id) => PublicKey::try_from_hex_string(&id, true)?,
         None => panic!("Usage: fetch_metadata <RelayURL> <PubKeyHex>"),
     };
 
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let our_sub_id = SubscriptionId("fetch_metadata".to_string());
     let mut filter = Filter::new();
-    filter.add_author(&pubkeyhex);
+    filter.add_author(pubkey);
     filter.add_event_kind(EventKind::Metadata);
     filter.limit = Some(1);
 

@@ -1,7 +1,7 @@
 use nostr_probe::{Command, Probe};
 use nostr_types::{
-    EventKind, Filter, IdHex, KeySigner, PreEvent, PrivateKey, RelayMessage, Signer,
-    SubscriptionId, Unixtime,
+    EventKind, Filter, KeySigner, PreEvent, PrivateKey, RelayMessage, Signer, SubscriptionId,
+    Unixtime,
 };
 use std::env;
 
@@ -43,8 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let id: IdHex = event.id.into();
-
     to_probe.send(Command::PostEvent(event.clone())).await?;
 
     loop {
@@ -64,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let our_sub_id = SubscriptionId("fetch_by_id".to_string());
     let mut filter = Filter::new();
-    filter.add_id(&id);
+    filter.add_id(event.id);
     to_probe
         .send(Command::FetchEvents(our_sub_id.clone(), vec![filter]))
         .await?;

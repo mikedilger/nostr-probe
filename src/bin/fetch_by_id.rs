@@ -1,5 +1,5 @@
 use nostr_probe::{Command, Probe};
-use nostr_types::{Filter, IdHex, RelayMessage, SubscriptionId};
+use nostr_types::{Filter, Id, RelayMessage, SubscriptionId};
 use std::env;
 
 #[tokio::main]
@@ -10,8 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(u) => u,
         None => panic!("Usage: fetch_by_id <RelayURL> <IdHex>"),
     };
-    let id: IdHex = match args.next() {
-        Some(id) => IdHex::try_from_str(&id)?,
+    let id: Id = match args.next() {
+        Some(id) => Id::try_from_hex_string(&id)?,
         None => panic!("Usage: fetch_by_id <RelayURL> <IdHex>"),
     };
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let mut filter = Filter::new();
-    filter.add_id(&id);
+    filter.add_id(id);
 
     let our_sub_id = SubscriptionId("fetch_by_id".to_string());
     to_probe

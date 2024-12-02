@@ -1,5 +1,5 @@
 use nostr_probe::{Command, Probe};
-use nostr_types::{EventKind, Filter, PublicKey, PublicKeyHex, RelayMessage, SubscriptionId};
+use nostr_types::{EventKind, Filter, PublicKey, RelayMessage, SubscriptionId};
 use std::env;
 
 #[tokio::main]
@@ -31,7 +31,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             panic!("Usage: fetch_by_kind_and_author_limit <RelayURL> <KindNumber> <PubKey> <Limit>")
         }
     };
-    let key: PublicKeyHex = author_key.into();
     let limit = match args.next() {
         Some(l) => l.parse::<usize>()?,
         None => {
@@ -50,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let filter = Filter {
         kinds: vec![kind],
-        authors: vec![key],
+        authors: vec![author_key],
         limit: Some(limit),
         ..Default::default()
     };

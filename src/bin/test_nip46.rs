@@ -95,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Subscribe to nostr-connect events from our peer on this relay
     let our_sub_id = SubscriptionId("test_nip46".to_string());
     let mut filter = Filter::new();
-    filter.add_author(&remote_pubkey.into());
+    filter.add_author(remote_pubkey);
     filter.add_event_kind(EventKind::NostrConnect);
     filter.add_tag_value('p', ephemeral_public_key.as_hex_string());
     to_probe

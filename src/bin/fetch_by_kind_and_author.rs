@@ -1,5 +1,5 @@
 use nostr_probe::{Command, Probe};
-use nostr_types::{EventKind, Filter, PublicKey, PublicKeyHex, RelayMessage, SubscriptionId};
+use nostr_types::{EventKind, Filter, PublicKey, RelayMessage, SubscriptionId};
 use std::env;
 
 #[tokio::main]
@@ -25,7 +25,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         None => panic!("Usage: fetch_by_kind_and_author <RelayURL> <KindNumber> <PubKey>"),
     };
-    let key: PublicKeyHex = author_key.into();
 
     let (to_probe, from_main) = tokio::sync::mpsc::channel::<Command>(100);
     let (to_main, mut from_probe) = tokio::sync::mpsc::channel::<RelayMessage>(100);
@@ -38,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let filter = Filter {
         kinds: vec![kind],
-        authors: vec![key],
+        authors: vec![author_key],
         ..Default::default()
     };
 

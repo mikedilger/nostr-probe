@@ -1,5 +1,5 @@
 use nostr_probe::{Command, Probe};
-use nostr_types::{EventKind, Filter, PublicKey, PublicKeyHex, RelayMessage};
+use nostr_types::{EventKind, Filter, PublicKey, RelayMessage};
 use std::env;
 
 #[tokio::main]
@@ -25,7 +25,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         None => panic!("Usage: fetch_by_kind_and_author <RelayURL> <KindNumber> <PubKey>"),
     };
-    let key: PublicKeyHex = author_key.into();
 
     let signer = nostr_probe::load_signer()?;
 
@@ -41,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let filter = Filter {
         kinds: vec![kind],
-        authors: vec![key],
+        authors: vec![author_key],
         ..Default::default()
     };
 

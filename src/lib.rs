@@ -170,8 +170,19 @@ impl Probe {
                     RelayMessage::Notice(s) => {
                         eprintln!("{}: NOTICE({})", PREFIXES.from_relay, s);
                     }
+                    RelayMessage::Notify(s) => {
+                        eprintln!("{}: NOTIFY({})", PREFIXES.from_relay, s);
+                    }
                     RelayMessage::Eose(sub) => {
                         eprintln!("{}: EOSE({})", PREFIXES.from_relay, sub.as_str());
+                    }
+                    RelayMessage::Count(sub, result) => {
+                        eprintln!(
+                            "{}: COUNT({},{:?})",
+                            PREFIXES.from_relay,
+                            sub.as_str(),
+                            result
+                        );
                     }
                     RelayMessage::Ok(id, ok, reason) => {
                         eprintln!(
@@ -327,9 +338,13 @@ pub async fn req(
                     }
                 }
             }
+            RelayMessage::Count(_, _) => {}
             RelayMessage::Notice(_) => {
                 to_probe.send(Command::Exit).await?;
                 break;
+            }
+            RelayMessage::Notify(m) => {
+                eprintln!("NOTIFY: {m}");
             }
             RelayMessage::Ok(id, is_ok, reason) => {
                 if let Some(authid) = authenticated {
