@@ -31,6 +31,7 @@ pub enum Command {
     PostEvent(Event),
     Auth(Event),
     FetchEvents(SubscriptionId, Vec<Filter>),
+    CountEvents(SubscriptionId, Vec<Filter>),
     Exit,
 }
 
@@ -99,6 +100,12 @@ impl Probe {
                         },
                         Some(Command::FetchEvents(subid, filters)) => {
                             let client_message = ClientMessage::Req(subid, filters);
+                            let wire = serde_json::to_string(&client_message)?;
+                            let msg = Message::Text(wire);
+                            self.send(&mut websocket, msg).await?;
+                        },
+                        Some(Command::CountEvents(subid, filters)) => {
+                            let client_message = ClientMessage::Count(subid, filters);
                             let wire = serde_json::to_string(&client_message)?;
                             let msg = Message::Text(wire);
                             self.send(&mut websocket, msg).await?;

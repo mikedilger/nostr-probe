@@ -31,7 +31,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Identifier
     tags.push(Tag::new(&["d", &args.d]));
     if args.kind.is_empty() {
-        return Err(Box::new(std::io::Error::other("You must specify at least one kind")));
+        return Err(Box::new(std::io::Error::other(
+            "You must specify at least one kind",
+        )));
     }
 
     // Kinds
