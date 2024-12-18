@@ -52,6 +52,14 @@ impl Probe {
         &mut self,
         relay_url: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        self.connect_and_listen_with_timeout(relay_url, 15).await
+    }
+
+    pub async fn connect_and_listen_with_timeout(
+        &mut self,
+        relay_url: &str,
+        timeout_secs: u64,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let (host, uri) = url_to_host_and_uri(relay_url);
 
         let key: [u8; 16] = rand::random();
@@ -69,20 +77,19 @@ impl Probe {
             .body(())?;
 
         let (mut websocket, _response) = tokio::time::timeout(
-            std::time::Duration::new(5, 0),
+            std::time::Duration::new(timeout_secs, 0),
             tokio_tungstenite::connect_async(request),
         )
         .await??;
 
-        let mut ping_timer = tokio::time::interval(std::time::Duration::new(15, 0));
-        ping_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        ping_timer.tick().await; // use up the first immediate tick.
+        let mut timeout_timer = tokio::time::interval(std::time::Duration::new(timeout_secs, 0));
+        timeout_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        timeout_timer.tick().await; // use up the first immediate tick.
 
         loop {
             tokio::select! {
-                _ = ping_timer.tick() => {
-                    let msg = Message::Ping(vec![0x1]);
-                    self.send(&mut websocket, msg).await?;
+                _ = timeout_timer.tick() => {
+                    return Ok(()); // timed out
                 },
                 local_message = self.from_main.recv() => {
                     match local_message {
